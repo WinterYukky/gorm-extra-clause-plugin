@@ -1,4 +1,4 @@
-package exclauses
+package exclause
 
 import (
 	"database/sql/driver"

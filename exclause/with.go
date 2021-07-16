@@ -1,4 +1,4 @@
-package exclauses
+package exclause
 
 import (
 	"gorm.io/gorm"
