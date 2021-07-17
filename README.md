@@ -2,6 +2,9 @@
 
 The clause support plugin for gorm, that not supported by gorm.
 
+[![test status](https://github.com/WinterYukky/gorm-extra-clause-plugin/actions/workflows/go.yml/badge.svg?branch=main "test status")](https://github.com/WinterYukky/gorm-extra-clause-plugin/actions)
+[![MIT license](https://img.shields.io/badge/license-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
+
 ## Support clauses
 
 - [x] WITH (CTE)
