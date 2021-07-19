@@ -6,16 +6,29 @@ import (
 )
 
 // With with clause
+//
+//  // examples
+//  // WITH `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
+//  db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Subquery: clause.Expr{SQL: "SELECT * FROM `users`"}}}}).Table("cte").Scan(&users)
+//
+//  // WITH `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
+//  db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+//
+//  // WITH `cte` (`id`,`name`) AS (SELECT * FROM `users`) SELECT * FROM `cte`
+//  db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Columns: []string{"id", "name"}, Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+//
+//  // WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
+//  db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 type With struct {
-	CTEs []CTE
+	Recursive bool
+	CTEs      []CTE
 }
 
 // CTE common table expressions
 type CTE struct {
-	Recursive   bool
-	Alias       string
-	Columns     []string
-	Expressions []clause.Expression
+	Name     string
+	Columns  []string
+	Subquery clause.Expression
 }
 
 // Name with clause name
@@ -25,11 +38,8 @@ func (with With) Name() string {
 
 // Build build with clause
 func (with With) Build(builder clause.Builder) {
-	for _, cte := range with.CTEs {
-		if cte.Recursive {
-			builder.WriteString("RECURSIVE ")
-			break
-		}
+	if with.Recursive {
+		builder.WriteString("RECURSIVE ")
 	}
 	for index, cte := range with.CTEs {
 		if index > 0 {
@@ -41,7 +51,7 @@ func (with With) Build(builder clause.Builder) {
 
 // Build build CTE
 func (cte CTE) Build(builder clause.Builder) {
-	builder.WriteQuoted(cte.Alias)
+	builder.WriteQuoted(cte.Name)
 	if len(cte.Columns) > 0 {
 		builder.WriteString(" (")
 		for index, column := range cte.Columns {
@@ -56,15 +66,16 @@ func (cte CTE) Build(builder clause.Builder) {
 	builder.WriteString(" AS ")
 
 	builder.WriteByte('(')
-	for _, expression := range cte.Expressions {
-		expression.Build(builder)
-	}
+	cte.Subquery.Build(builder)
 	builder.WriteByte(')')
 }
 
 // MergeClause merge With clauses
 func (with With) MergeClause(clause *clause.Clause) {
 	if w, ok := clause.Expression.(With); ok {
+		if w.Recursive {
+			with.Recursive = true
+		}
 		ctes := make([]CTE, len(w.CTEs)+len(with.CTEs))
 		copy(ctes, w.CTEs)
 		copy(ctes[len(w.CTEs):], with.CTEs)
@@ -74,44 +85,38 @@ func (with With) MergeClause(clause *clause.Clause) {
 	clause.Expression = with
 }
 
-// NewWith is create new With
+// NewWith is easy to create new With
 //
 //  // examples
 //  // WITH `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
-//  db.Clauses(exclause.NewWith(db, "cte", "SELECT * FROM `users`")).Table("cte").Scan(&users)
+//  db.Clauses(exclause.NewWith("cte", "SELECT * FROM `users`")).Table("cte").Scan(&users)
 //
 //  // WITH `cte` AS (SELECT * FROM `users` WHERE `name` = 'WinterYukky') SELECT * FROM `cte`
-//  db.Clauses(exclause.NewWith(db, "cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")).Table("cte").Scan(&users)
+//  db.Clauses(exclause.NewWith("cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")).Table("cte").Scan(&users)
 //
 //  // WITH `cte` AS (SELECT * FROM `users` WHERE `name` = 'WinterYukky') SELECT * FROM `cte`
-//  db.Clauses(exclause.NewWith(db, "cte", db.Table("users").Where("`name` = ?", "WinterYukky"))).Table("cte").Scan(&users)
+//  db.Clauses(exclause.NewWith("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))).Table("cte").Scan(&users)
 //
-//  // WITH `cte`(`id`,`name`) AS (SELECT * FROM `users`) SELECT * FROM `cte`
-//  db.Clauses(exclause.NewWith(db, exclause.CTE{Alias: "cte", Columns: []string{"id", "name"}}, db.Table("users"))).Table("cte").Scan(&users)
-//
-//  // WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
-//  db.Clauses(exclause.NewWith(db, exclause.CTE{Recursive: true, Alias: "cte"}, db.Table("users"))).Table("cte").Scan(&users)
-func NewWith(db *gorm.DB, alias interface{}, query interface{}, args ...interface{}) With {
-	cte := CTE{}
-	switch v := alias.(type) {
-	case string:
-		cte.Alias = v
-	case CTE:
-		cte = v
-	default:
-		return With{}
-	}
-
-	switch v := query.(type) {
+// If you need more advanced WITH clause, you can see With struct.
+func NewWith(name string, subquery interface{}, args ...interface{}) With {
+	switch v := subquery.(type) {
 	case *gorm.DB:
-		if conds := db.Statement.BuildCondition("?", v); len(conds) > 0 {
-			cte.Expressions = conds
-			return With{CTEs: []CTE{cte}}
+		return With{
+			CTEs: []CTE{
+				{
+					Name:     name,
+					Subquery: Subquery{DB: v},
+				},
+			},
 		}
-	default:
-		if conds := db.Statement.BuildCondition(query, args...); len(conds) > 0 {
-			cte.Expressions = conds
-			return With{CTEs: []CTE{cte}}
+	case string:
+		return With{
+			CTEs: []CTE{
+				{
+					Name:     name,
+					Subquery: clause.Expr{SQL: v, Vars: args},
+				},
+			},
 		}
 	}
 	return With{}

@@ -35,7 +35,7 @@ func main() {
     // Insert this line
     db.Use(extraClausePlugin.New())
     // Use exclauses
-    db.Clauses(exclause.NewWith(db, "cte", db.Table("users"))).Table("cte").Scan(&users)
+    db.Clauses(exclause.NewWith("cte", db.Table("users"))).Table("cte").Scan(&users)
 }
 ```
 
@@ -45,17 +45,17 @@ func main() {
 
 ```go
 // WITH `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
-db.Clauses(exclause.NewWith(db, "cte", "SELECT * FROM `users`")).Table("cte").Scan(&users)
+db.Clauses(exclause.NewWith("cte", "SELECT * FROM `users`")).Table("cte").Scan(&users)
 
 // WITH `cte` AS (SELECT * FROM `users` WHERE `name` = 'WinterYukky') SELECT * FROM `cte`
-db.Clauses(exclause.NewWith(db, "cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")).Table("cte").Scan(&users)
+db.Clauses(exclause.NewWith("cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")).Table("cte").Scan(&users)
 
 // WITH `cte` AS (SELECT * FROM `users` WHERE `name` = 'WinterYukky') SELECT * FROM `cte`
-db.Clauses(exclause.NewWith(db, "cte", db.Table("users").Where("`name` = ?", "WinterYukky"))).Table("cte").Scan(&users)
+db.Clauses(exclause.NewWith("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))).Table("cte").Scan(&users)
 
-// WITH `cte`(`id`,`name`) AS (SELECT * FROM `users`) SELECT * FROM `cte`
-db.Clauses(exclause.NewWith(db, exclause.CTE{Alias: "cte", Columns: []string{"id", "name"}}, db.Table("users"))).Table("cte").Scan(&users)
+// WITH `cte` (`id`,`name`) AS (SELECT * FROM `users`) SELECT * FROM `cte`
+db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Columns: []string{"id", "name"}, Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 
 // WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
-db.Clauses(exclause.NewWith(db, exclause.CTE{Recursive: true, Alias: "cte"}, db.Table("users"))).Table("cte").Scan(&users)
+db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 ```
