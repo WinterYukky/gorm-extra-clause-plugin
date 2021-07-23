@@ -64,12 +64,12 @@ db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Sub
 ### UNION
 
 ```go
- // SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
- db.Table("general_users").Clauses(exclause.NewUnion("SELECT * FROM `admin_users`")).Scan(&users)
+// SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewUnion("SELECT * FROM `admin_users`")).Scan(&users)
 
- // SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
- db.Table("general_users").Clauses(exclause.NewUnion(db.Table("admin_users"))).Scan(&users)
+// SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewUnion(db.Table("admin_users"))).Scan(&users)
 
- // SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`
- db.Table("general_users").Clauses(exclause.NewUnion("ALL ?", db.Table("admin_users"))).Scan(&users)
+// SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewUnion("ALL ?", db.Table("admin_users"))).Scan(&users)
 ```
