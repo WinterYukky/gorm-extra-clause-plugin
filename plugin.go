@@ -12,8 +12,8 @@ func (e *ExtraClausePlugin) Name() string {
 
 // Initialize register BuildClauses
 func (e *ExtraClausePlugin) Initialize(db *gorm.DB) error {
-	db.Callback().Query().Clauses = []string{"WITH", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "FOR"}
-	db.Callback().Row().Clauses = []string{"WITH", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "FOR"}
+	db.Callback().Query().Clauses = []string{"WITH", "SELECT", "FROM", "WHERE", "GROUP BY", "UNION", "ORDER BY", "LIMIT", "FOR"}
+	db.Callback().Row().Clauses = []string{"WITH", "SELECT", "FROM", "WHERE", "GROUP BY", "UNION", "ORDER BY", "LIMIT", "FOR"}
 	return nil
 }
 

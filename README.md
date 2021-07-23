@@ -59,3 +59,16 @@ db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Columns: []string{"i
 // WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
 db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 ```
+
+### UNION
+
+```go
+ // SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
+ db.Table("general_users").Clauses(exclause.NewUnion("SELECT * FROM `admin_users`")).Scan(&users)
+
+ // SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
+ db.Table("general_users").Clauses(exclause.NewUnion(db.Table("admin_users"))).Scan(&users)
+
+ // SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`
+ db.Table("general_users").Clauses(exclause.NewUnion("ALL ?", db.Table("admin_users"))).Scan(&users)
+```

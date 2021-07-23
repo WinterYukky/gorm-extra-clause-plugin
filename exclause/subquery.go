@@ -12,8 +12,5 @@ type Subquery struct {
 
 // Build build subquery
 func (subquery Subquery) Build(builder clause.Builder) {
-	exprs := subquery.DB.Statement.BuildCondition("?", subquery.DB)
-	for _, expr := range exprs {
-		expr.Build(builder)
-	}
+	builder.AddVar(builder, subquery.DB)
 }
