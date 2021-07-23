@@ -8,6 +8,7 @@ The clause support plugin for gorm, that not supported by gorm.
 ## Support clauses
 
 - [x] WITH (CTE)
+- [x] UNION
 
 ## Install
 ```shell
