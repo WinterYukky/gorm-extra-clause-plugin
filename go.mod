@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	gorm.io/driver/mysql v1.3.6
-	gorm.io/gorm v1.23.8
+	gorm.io/gorm v1.23.10
 )
 
 require (
