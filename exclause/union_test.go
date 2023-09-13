@@ -8,7 +8,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	extraClausePlugin "github.com/WinterYukky/gorm-extra-clause-plugin"
-	"gorm.io/driver/mysql"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -80,10 +80,8 @@ func TestUnion_Query(t *testing.T) {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
 			defer mockDB.Close()
-			db, _ := gorm.Open(mysql.New(mysql.Config{
-				Conn:                      mockDB,
-				SkipInitializeWithVersion: true,
-			}))
+			mock.ExpectQuery("select sqlite_version()").WillReturnRows(mock.NewRows([]string{"version"}).AddRow("3.8.10"))
+			db, _ := gorm.Open(sqlite.Dialector{Conn: mockDB})
 			db.Use(extraClausePlugin.New())
 			mock.ExpectQuery(regexp.QuoteMeta(tt.want)).WithArgs(tt.wantArgs...).WillReturnRows(sqlmock.NewRows([]string{}))
 			if tt.operation != nil {
@@ -97,15 +95,13 @@ func TestUnion_Query(t *testing.T) {
 }
 
 func TestNewUnion(t *testing.T) {
-	mockDB, _, err := sqlmock.New()
+	mockDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockDB.Close()
-	db, _ := gorm.Open(mysql.New(mysql.Config{
-		Conn:                      mockDB,
-		SkipInitializeWithVersion: true,
-	}))
+	mock.ExpectQuery("select sqlite_version()").WillReturnRows(mock.NewRows([]string{"version"}).AddRow("3.8.10"))
+	db, _ := gorm.Open(sqlite.Dialector{Conn: mockDB})
 	db = db.Table("users")
 	type args struct {
 		subquery interface{}

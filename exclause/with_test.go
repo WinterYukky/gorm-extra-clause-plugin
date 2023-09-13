@@ -8,7 +8,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	extraClausePlugin "github.com/WinterYukky/gorm-extra-clause-plugin"
-	"gorm.io/driver/mysql"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -19,6 +19,7 @@ func TestWith_Query(t *testing.T) {
 		operation func(db *gorm.DB) *gorm.DB
 		want      string
 		wantArgs  []driver.Value
+		tx        bool
 	}{
 		{
 			name: "When Subquery is clause.Expr, then should be used as subquery",
@@ -55,6 +56,22 @@ func TestWith_Query(t *testing.T) {
 			want:     "WITH RECURSIVE `cte1` AS (SELECT * FROM `users`),`cte2` AS (SELECT * FROM `users`) SELECT * FROM `cte`",
 			wantArgs: []driver.Value{},
 		},
+		{
+			name: "When query is an update statement, then should run an update statement from cte",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.
+					Clauses(
+						With{CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}}}},
+						clause.From{Tables: []clause.Table{{Name: "cte"}}},
+					).
+					Table("users").
+					Where("name", "foo").
+					UpdateColumn("name", "bar")
+			},
+			want:     "WITH `cte` AS (SELECT * FROM `users`) UPDATE `users` SET `name`=? FROM `cte` WHERE `name` = ?",
+			wantArgs: []driver.Value{"bar", "foo"},
+			tx:       true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,12 +80,16 @@ func TestWith_Query(t *testing.T) {
 				t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 			}
 			defer mockDB.Close()
-			db, _ := gorm.Open(mysql.New(mysql.Config{
-				Conn:                      mockDB,
-				SkipInitializeWithVersion: true,
-			}))
+			mock.ExpectQuery("select sqlite_version()").WillReturnRows(mock.NewRows([]string{"version"}).AddRow("3.8.10"))
+			db, _ := gorm.Open(sqlite.Dialector{Conn: mockDB})
 			db.Use(extraClausePlugin.New())
-			mock.ExpectQuery(regexp.QuoteMeta(tt.want)).WithArgs(tt.wantArgs...).WillReturnRows(sqlmock.NewRows([]string{}))
+			if tt.tx {
+				mock.ExpectBegin()
+				mock.ExpectExec(regexp.QuoteMeta(tt.want)).WithArgs(tt.wantArgs...).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectCommit()
+			} else {
+				mock.ExpectQuery(regexp.QuoteMeta(tt.want)).WithArgs(tt.wantArgs...).WillReturnRows(sqlmock.NewRows([]string{}))
+			}
 			if tt.operation != nil {
 				db = tt.operation(db)
 			}
@@ -80,15 +101,13 @@ func TestWith_Query(t *testing.T) {
 }
 
 func TestNewWith(t *testing.T) {
-	mockDB, _, err := sqlmock.New()
+	mockDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer mockDB.Close()
-	db, _ := gorm.Open(mysql.New(mysql.Config{
-		Conn:                      mockDB,
-		SkipInitializeWithVersion: true,
-	}))
+	mock.ExpectQuery("select sqlite_version()").WillReturnRows(mock.NewRows([]string{"version"}).AddRow("3.8.10"))
+	db, _ := gorm.Open(sqlite.Dialector{Conn: mockDB})
 	db = db.Table("users")
 	type args struct {
 		name     string

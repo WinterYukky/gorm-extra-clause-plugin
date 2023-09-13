@@ -54,6 +54,19 @@ db.Clauses(exclause.NewWith("cte", "SELECT * FROM `users` WHERE `name` = ?", "Wi
 // WITH `cte` AS (SELECT * FROM `users` WHERE `name` = 'WinterYukky') SELECT * FROM `cte`
 db.Clauses(exclause.NewWith("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))).Table("cte").Scan(&users)
 
+// WITH `cte` AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY path ORDER BY modified_at DESC) as rank FROM `files`) 
+// UPDATE `files` SET `is_latest`=? FROM `cte` WHERE rank = 1
+db.Clauses(
+  exclause.NewWith("cte", db.
+    Table("files").
+    Select("*", "ROW_NUMBER() OVER (PARTITION BY path ORDER BY modified_at DESC) as rank"),
+  ),
+  clause.From{Tables: []clause.Table{{Name: "cte"}}},
+).
+Table("files").
+Where("rank = 1").
+UpdateColumn("is_latest", true).
+
 // WITH `cte` (`id`,`name`) AS (SELECT * FROM `users`) SELECT * FROM `cte`
 db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Columns: []string{"id", "name"}, Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 
