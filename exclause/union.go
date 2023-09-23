@@ -39,15 +39,15 @@ func (union Union) MergeClause(mergeClause *clause.Clause) {
 
 // NewUnion is easy to create new Union
 //
-//  // examples
-//  // SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
-//  db.Table("general_users").Clauses(exclause.NewUnion("SELECT * FROM `admin_users`")).Scan(&users)
+//	// examples
+//	// SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
+//	db.Table("general_users").Clauses(exclause.NewUnion("SELECT * FROM `admin_users`")).Scan(&users)
 //
-//  // SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
-//  db.Table("general_users").Clauses(exclause.NewUnion(db.Table("admin_users"))).Scan(&users)
+//	// SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`
+//	db.Table("general_users").Clauses(exclause.NewUnion(db.Table("admin_users"))).Scan(&users)
 //
-//  // SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`
-//  db.Table("general_users").Clauses(exclause.NewUnion("ALL ?", db.Table("admin_users"))).Scan(&users)
+//	// SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`
+//	db.Table("general_users").Clauses(exclause.NewUnion("ALL ?", db.Table("admin_users"))).Scan(&users)
 func NewUnion(query interface{}, args ...interface{}) Union {
 	switch v := query.(type) {
 	case *gorm.DB:
