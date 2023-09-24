@@ -18,8 +18,9 @@ func (e *ExtraClausePlugin) Initialize(db *gorm.DB) error {
 }
 
 // New create new ExtraClausePlugin
-//  // example
-//  db.Use(extraClausePlugin.New())
+//
+//	// example
+//	db.Use(extraClausePlugin.New())
 func New() *ExtraClausePlugin {
 	return &ExtraClausePlugin{}
 }
