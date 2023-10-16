@@ -7,7 +7,7 @@ type ExtraClausePlugin struct{}
 
 // Name return plugin name
 func (e *ExtraClausePlugin) Name() string {
-	return "ExtraCalusePlugin"
+	return "ExtraClausePlugin"
 }
 
 // Initialize register BuildClauses
