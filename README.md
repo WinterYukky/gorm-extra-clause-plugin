@@ -9,6 +9,7 @@ The clause support plugin for gorm, that not supported by gorm.
 
 - [x] WITH (CTE)
 - [x] UNION
+- [x] EXCEPT
 
 ## Install
 ```shell
@@ -72,4 +73,17 @@ db.Table("general_users").Clauses(exclause.NewUnion(db.Table("admin_users"))).Sc
 
 // SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`
 db.Table("general_users").Clauses(exclause.NewUnion("ALL ?", db.Table("admin_users"))).Scan(&users)
+```
+
+### EXCEPT
+
+```go
+// SELECT * FROM `general_users` EXCEPT SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewExcept("SELECT * FROM `admin_users`")).Scan(&users)
+
+// SELECT * FROM `general_users` EXCEPT SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewExcept(db.Table("admin_users"))).Scan(&users)
+
+// SELECT * FROM `general_users` EXCEPT ALL SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewExcept("ALL ?", db.Table("admin_users"))).Scan(&users)
 ```
