@@ -10,6 +10,7 @@ The clause support plugin for gorm, that not supported by gorm.
 - [x] WITH (CTE)
 - [x] UNION
 - [x] INTERSECT
+- [x] EXCEPT
 
 ## Install
 ```shell
@@ -86,4 +87,17 @@ db.Table("general_users").Clauses(exclause.NewIntersect(db.Table("admin_users"))
 
 // SELECT * FROM `general_users` INTERSECT ALL SELECT * FROM `admin_users`
 db.Table("general_users").Clauses(exclause.NewIntersect("ALL ?", db.Table("admin_users"))).Scan(&users)
+```
+
+### EXCEPT
+
+```go
+// SELECT * FROM `general_users` EXCEPT SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewExcept("SELECT * FROM `admin_users`")).Scan(&users)
+
+// SELECT * FROM `general_users` EXCEPT SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewExcept(db.Table("admin_users"))).Scan(&users)
+
+// SELECT * FROM `general_users` EXCEPT ALL SELECT * FROM `admin_users`
+db.Table("general_users").Clauses(exclause.NewExcept("ALL ?", db.Table("admin_users"))).Scan(&users)
 ```
