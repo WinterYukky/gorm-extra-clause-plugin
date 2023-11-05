@@ -13,18 +13,19 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func TestUnion_Query(t *testing.T) {
+func TestIntersect_Query(t *testing.T) {
 	tests := []struct {
 		name      string
 		operation func(db *gorm.DB) *gorm.DB
 		want      string
+		wantErr   bool
 		wantArgs  []driver.Value
 	}{
 		{
 			name: "When statement is clause.Expr, then should be used as statement",
 			operation: func(db *gorm.DB) *gorm.DB {
 				return db.Table("general_users").
-					Clauses(Union{
+					Clauses(Intersect{
 						Statements: []clause.Expression{
 							clause.Expr{
 								SQL:  "ALL ?",
@@ -33,14 +34,14 @@ func TestUnion_Query(t *testing.T) {
 						},
 					}).Scan(nil)
 			},
-			want:     "SELECT * FROM `general_users` UNION ALL SELECT * FROM `admin_users`",
+			want:     "SELECT * FROM `general_users` INTERSECT ALL SELECT * FROM `admin_users`",
 			wantArgs: []driver.Value{},
 		},
 		{
 			name: "When statement is exclause.Subquery, then should be used as statement",
 			operation: func(db *gorm.DB) *gorm.DB {
 				return db.Table("general_users").
-					Clauses(Union{
+					Clauses(Intersect{
 						Statements: []clause.Expression{
 							Subquery{
 								DB: db.Table("admin_users"),
@@ -48,21 +49,21 @@ func TestUnion_Query(t *testing.T) {
 						},
 					}).Scan(nil)
 			},
-			want:     "SELECT * FROM `general_users` UNION SELECT * FROM `admin_users`",
+			want:     "SELECT * FROM `general_users` INTERSECT SELECT * FROM `admin_users`",
 			wantArgs: []driver.Value{},
 		},
 		{
-			name: "When has multiple UNION, then should be used all UNION clause",
+			name: "When has multiple INTERSECT, then should be used all INTERSECT clause",
 			operation: func(db *gorm.DB) *gorm.DB {
 				return db.Table("general_users").
-					Clauses(Union{
+					Clauses(Intersect{
 						Statements: []clause.Expression{
 							Subquery{
 								DB: db.Table("admin_users"),
 							},
 						},
 					}).
-					Clauses(Union{
+					Clauses(Intersect{
 						Statements: []clause.Expression{
 							Subquery{
 								DB: db.Table("guest_users"),
@@ -70,7 +71,7 @@ func TestUnion_Query(t *testing.T) {
 						},
 					}).Scan(nil)
 			},
-			want:     "SELECT * FROM `general_users` UNION SELECT * FROM `admin_users` UNION SELECT * FROM `guest_users`",
+			want:     "SELECT * FROM `general_users` INTERSECT SELECT * FROM `admin_users` INTERSECT SELECT * FROM `guest_users`",
 			wantArgs: []driver.Value{},
 		},
 	}
@@ -87,6 +88,7 @@ func TestUnion_Query(t *testing.T) {
 			}))
 			db.Use(extraClausePlugin.New())
 			mock.ExpectQuery(regexp.QuoteMeta(tt.want)).WithArgs(tt.wantArgs...).WillReturnRows(sqlmock.NewRows([]string{}))
+
 			if tt.operation != nil {
 				db = tt.operation(db)
 			}
@@ -97,7 +99,7 @@ func TestUnion_Query(t *testing.T) {
 	}
 }
 
-func TestNewUnion(t *testing.T) {
+func TestNewIntersect(t *testing.T) {
 	mockDB, _, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -110,19 +112,18 @@ func TestNewUnion(t *testing.T) {
 	db = db.Table("users")
 	type args struct {
 		subquery interface{}
-		args     []interface{}
 	}
 	tests := []struct {
 		name string
 		args args
-		want Union
+		want Intersect
 	}{
 		{
 			name: "When subquery is *gorm.DB, then statement is exclause.Subquery",
 			args: args{
 				subquery: db,
 			},
-			want: Union{
+			want: Intersect{
 				Statements: []clause.Expression{
 					Subquery{
 						DB: db,
@@ -133,30 +134,28 @@ func TestNewUnion(t *testing.T) {
 		{
 			name: "When subquery is string, then statement is clause.Expr",
 			args: args{
-				subquery: "ALL ?",
-				args:     []interface{}{db.Table("users")},
+				subquery: "SELECT * FROM users",
 			},
-			want: Union{
+			want: Intersect{
 				Statements: []clause.Expression{
 					clause.Expr{
-						SQL:  "ALL ?",
-						Vars: []interface{}{db.Table("users")},
+						SQL: "SELECT * FROM users",
 					},
 				},
 			},
 		},
 		{
-			name: "When subquery is else, then statement is empty Union",
+			name: "When subquery is else, then statement is empty Intersect",
 			args: args{
 				subquery: 0,
 			},
-			want: Union{},
+			want: Intersect{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewUnion(tt.args.subquery, tt.args.args...); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewUnion() = %v, want %v", got, tt.want)
+			if got := NewIntersect(tt.args.subquery); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewIntersect() = %v, want %v", got, tt.want)
 			}
 		})
 	}
