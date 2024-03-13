@@ -20,8 +20,9 @@ import (
 //	// WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
 //	db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 type With struct {
-	Recursive bool
-	CTEs      []CTE
+	Recursive    bool
+	Materialized bool
+	CTEs         []CTE
 }
 
 // CTE common table expressions
@@ -45,12 +46,12 @@ func (with With) Build(builder clause.Builder) {
 		if index > 0 {
 			builder.WriteByte(',')
 		}
-		cte.Build(builder)
+		cte.Build(builder, with.Materialized)
 	}
 }
 
 // Build build CTE
-func (cte CTE) Build(builder clause.Builder) {
+func (cte CTE) Build(builder clause.Builder, materialized bool) {
 	builder.WriteQuoted(cte.Name)
 	if len(cte.Columns) > 0 {
 		builder.WriteString(" (")
@@ -64,6 +65,12 @@ func (cte CTE) Build(builder clause.Builder) {
 	}
 
 	builder.WriteString(" AS ")
+	// Latest versions of Postgres default to non-materialized CTEs, so we don't need to
+	// specify it explicitly. Sometimes you want to keep the optimisation fence though, in
+	// which case you can set the Materialized flag to true.
+	if materialized {
+		builder.WriteString("MATERIALIZED ")
+	}
 
 	builder.WriteByte('(')
 	cte.Subquery.Build(builder)
