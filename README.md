@@ -19,6 +19,9 @@ go get github.com/WinterYukky/gorm-extra-clause-plugin
 
 ## Get Started
 
+> [!IMPORTANT]
+> Do not forget the plugin initialisation code `db.Use(extraClausePlugin.New()`.
+
 ```go
 package main
 
@@ -41,6 +44,7 @@ func main() {
     db.Clauses(exclause.NewWith("cte", db.Table("users"))).Table("cte").Scan(&users)
 }
 ```
+
 
 ## Examples
 
