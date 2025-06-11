@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	extraClausePlugin "github.com/WinterYukky/gorm-extra-clause-plugin"
+	extraClausePlugin "github.com/mamazinho/gorm-extra-clause-plugin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -73,7 +73,7 @@ func TestWith_Query(t *testing.T) {
 				db = tt.operation(db)
 			}
 			if db.Error != nil {
-				t.Errorf(db.Error.Error())
+				t.Error(db.Error.Error())
 			}
 		})
 	}
@@ -141,7 +141,7 @@ func TestWith_Update(t *testing.T) {
 				db = tt.operation(db)
 			}
 			if db.Error != nil {
-				t.Errorf(db.Error.Error())
+				t.Error(db.Error.Error())
 			}
 		})
 	}

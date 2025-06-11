@@ -14,7 +14,7 @@ The clause support plugin for gorm, that not supported by gorm.
 
 ## Install
 ```shell
-go get github.com/WinterYukky/gorm-extra-clause-plugin
+go get github.com/mamazinho/gorm-extra-clause-plugin
 ```
 
 ## Get Started
@@ -29,8 +29,8 @@ import (
   "gorm.io/gorm"
   "gorm.io/driver/sqlite"
   // Add plugin package
-  extraClausePlugin "github.com/WinterYukky/gorm-extra-clause-plugin"
-  "github.com/WinterYukky/gorm-extra-clause-plugin/exclause"
+  extraClausePlugin "github.com/mamazinho/gorm-extra-clause-plugin"
+  "github.com/mamazinho/gorm-extra-clause-plugin/exclause"
 )
 
 func main() {
