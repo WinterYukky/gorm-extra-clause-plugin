@@ -83,6 +83,9 @@ func (with With) MergeClause(clause *clause.Clause) {
 		if w.Recursive {
 			with.Recursive = true
 		}
+		if w.Materialized {
+			with.Materialized = true
+		}
 		ctes := make([]CTE, len(w.CTEs)+len(with.CTEs))
 		copy(ctes, w.CTEs)
 		copy(ctes[len(w.CTEs):], with.CTEs)

@@ -55,6 +55,68 @@ func TestWith_Query(t *testing.T) {
 			want:     "WITH RECURSIVE `cte1` AS (SELECT * FROM `users`),`cte2` AS (SELECT * FROM `users`) SELECT * FROM `cte`",
 			wantArgs: []driver.Value{},
 		},
+		{
+			name: "When Materialized is true, then should be used MATERIALIZED keyword",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{Materialized: true, CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When multiple CTEs with Materialized, then all should have MATERIALIZED keyword",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.
+					Clauses(With{Materialized: true, CTEs: []CTE{{Name: "cte1", Subquery: Subquery{DB: db.Table("users")}}}}).
+					Clauses(With{Materialized: true, CTEs: []CTE{{Name: "cte2", Subquery: Subquery{DB: db.Table("products")}}}}).
+					Table("cte1").Scan(nil)
+			},
+			want:     "WITH `cte1` AS MATERIALIZED (SELECT * FROM `users`),`cte2` AS MATERIALIZED (SELECT * FROM `products`) SELECT * FROM `cte1`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When Recursive and Materialized are both true, then should have both keywords",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{Recursive: true, Materialized: true, CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH RECURSIVE `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When Materialized is false, then should not have MATERIALIZED keyword",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{Materialized: false, CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When contains materialized even once, then should be used MATERIALIZED keyword for all CTEs",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.
+					Clauses(With{Materialized: true, CTEs: []CTE{{Name: "cte1", Subquery: Subquery{DB: db.Table("users")}}}}).
+					Clauses(With{Materialized: false, CTEs: []CTE{{Name: "cte2", Subquery: Subquery{DB: db.Table("products")}}}}).
+					Table("cte1").Scan(nil)
+			},
+			want:     "WITH `cte1` AS MATERIALIZED (SELECT * FROM `users`),`cte2` AS MATERIALIZED (SELECT * FROM `products`) SELECT * FROM `cte1`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When Materialized with clause.Expr subquery",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{Materialized: true, CTEs: []CTE{{Name: "cte", Subquery: clause.Expr{SQL: "SELECT * FROM `users` WHERE `name` = ?", Vars: []interface{}{"WinterYukky"}}}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
+		{
+			name: "When Materialized with columns specified",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{Materialized: true, CTEs: []CTE{{Name: "cte", Columns: []string{"id", "name"}, Subquery: Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` (`id`,`name`) AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -65,6 +65,12 @@ db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Columns: []string{"i
 
 // WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
 db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+
+// WITH `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
+db.Clauses(exclause.With{Materialized: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+
+// WITH RECURSIVE `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
+db.Clauses(exclause.With{Recursive: true, Materialized: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 ```
 
 ### UNION
