@@ -67,10 +67,17 @@ db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Columns: []string{"i
 db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
 
 // WITH `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
-db.Clauses(exclause.With{Materialized: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}, Materialized: exclause.CTEMaterialize}}}).Table("cte").Scan(&users)
 
-// WITH RECURSIVE `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
-db.Clauses(exclause.With{Recursive: true, Materialized: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+// WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
+db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}, Materialized: exclause.CTENotMaterialize}}}).Table("cte").Scan(&users)
+
+// Using helper functions for materialized CTEs
+// WITH `cte1` AS MATERIALIZED (...), `cte2` AS NOT MATERIALIZED (...) SELECT * FROM `cte1`
+db.Clauses(exclause.With{CTEs: []exclause.CTE{
+    exclause.NewMaterializedCTE("cte1", exclause.Subquery{DB: db.Table("users")}),
+    exclause.NewNotMaterializedCTE("cte2", exclause.Subquery{DB: db.Table("products")}),
+}}).Table("cte1").Scan(&users)
 ```
 
 ### UNION
