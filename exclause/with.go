@@ -56,29 +56,44 @@ type CTE struct {
 	Materialized CTEMaterializeOption
 }
 
+// convertToClauseExpression converts various input types to clause.Expression
+func convertToClauseExpression(subquery interface{}, args ...interface{}) clause.Expression {
+	switch v := subquery.(type) {
+	case clause.Expression:
+		return v
+	case *gorm.DB:
+		return Subquery{DB: v}
+	case string:
+		return clause.Expr{SQL: v, Vars: args}
+	default:
+		// Return empty Expr if type is not recognized
+		return clause.Expr{}
+	}
+}
+
 // NewCTE creates a new CTE with unspecified materialization (database default)
-func NewCTE(name string, subquery clause.Expression) CTE {
+func NewCTE(name string, subquery interface{}, args ...interface{}) CTE {
 	return CTE{
 		Name:         name,
-		Subquery:     subquery,
+		Subquery:     convertToClauseExpression(subquery, args...),
 		Materialized: CTEMaterializeUnspecified,
 	}
 }
 
 // NewMaterializedCTE creates a new CTE that will be materialized
-func NewMaterializedCTE(name string, subquery clause.Expression) CTE {
+func NewMaterializedCTE(name string, subquery interface{}, args ...interface{}) CTE {
 	return CTE{
 		Name:         name,
-		Subquery:     subquery,
+		Subquery:     convertToClauseExpression(subquery, args...),
 		Materialized: CTEMaterialize,
 	}
 }
 
 // NewNotMaterializedCTE creates a new CTE that will not be materialized
-func NewNotMaterializedCTE(name string, subquery clause.Expression) CTE {
+func NewNotMaterializedCTE(name string, subquery interface{}, args ...interface{}) CTE {
 	return CTE{
 		Name:         name,
-		Subquery:     subquery,
+		Subquery:     convertToClauseExpression(subquery, args...),
 		Materialized: CTENotMaterialize,
 	}
 }

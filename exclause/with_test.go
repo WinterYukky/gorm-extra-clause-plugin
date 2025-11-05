@@ -155,6 +155,54 @@ func TestWith_Query(t *testing.T) {
 			want:     "WITH `cte` (`id`,`name`) AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`",
 			wantArgs: []driver.Value{},
 		},
+		{
+			name: "When using NewCTE with string subquery and args",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewCTE("cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
+		{
+			name: "When using NewMaterializedCTE with string subquery and args",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewMaterializedCTE("cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
+		{
+			name: "When using NewNotMaterializedCTE with string subquery and args",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewNotMaterializedCTE("cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
+		{
+			name: "When using NewCTE with *gorm.DB subquery",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewCTE("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
+		{
+			name: "When using NewMaterializedCTE with *gorm.DB subquery",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewMaterializedCTE("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
+		{
+			name: "When using NewNotMaterializedCTE with *gorm.DB subquery",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewNotMaterializedCTE("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{"WinterYukky"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -233,6 +281,22 @@ func TestWith_Update(t *testing.T) {
 			name: "When Materialized is CTENotMaterialize in update",
 			operation: func(db *gorm.DB) *gorm.DB {
 				return db.Clauses(With{CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users").Where("`name` = ?", "WinterYukky")}, Materialized: CTENotMaterialize}}}).Table("users").Where("`users`.`id` IN (SELECT `id` FROM `cte`)").Update("name", "new_name")
+			},
+			want:     "WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) UPDATE `users` SET `name`=? WHERE `users`.`id` IN (SELECT `id` FROM `cte`)",
+			wantArgs: []driver.Value{"WinterYukky", "new_name"},
+		},
+		{
+			name: "When using NewMaterializedCTE with string subquery in update",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewMaterializedCTE("cte", "SELECT * FROM `users` WHERE `name` = ?", "WinterYukky")}}).Table("users").Where("`users`.`id` IN (SELECT `id` FROM `cte`)").Update("name", "new_name")
+			},
+			want:     "WITH `cte` AS MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) UPDATE `users` SET `name`=? WHERE `users`.`id` IN (SELECT `id` FROM `cte`)",
+			wantArgs: []driver.Value{"WinterYukky", "new_name"},
+		},
+		{
+			name: "When using NewNotMaterializedCTE with *gorm.DB in update",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{NewNotMaterializedCTE("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))}}).Table("users").Where("`users`.`id` IN (SELECT `id` FROM `cte`)").Update("name", "new_name")
 			},
 			want:     "WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) UPDATE `users` SET `name`=? WHERE `users`.`id` IN (SELECT `id` FROM `cte`)",
 			wantArgs: []driver.Value{"WinterYukky", "new_name"},
