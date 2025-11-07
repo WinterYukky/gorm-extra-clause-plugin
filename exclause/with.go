@@ -5,6 +5,18 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// CTEMaterializeOption represents the materialization hint for a CTE
+type CTEMaterializeOption int
+
+const (
+	// CTEMaterializeUnspecified means no materialization hint (database default)
+	CTEMaterializeUnspecified CTEMaterializeOption = iota
+	// CTEMaterialize forces the CTE to be materialized
+	CTEMaterialize
+	// CTENotMaterialize prevents the CTE from being materialized
+	CTENotMaterialize
+)
+
 // With with clause
 //
 //	// examples
@@ -19,6 +31,18 @@ import (
 //
 //	// WITH RECURSIVE `cte` AS (SELECT * FROM `users`) SELECT * FROM `cte`
 //	db.Clauses(exclause.With{Recursive: true, CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}}}}).Table("cte").Scan(&users)
+//
+//	// WITH `cte` AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
+//	db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}, Materialized: exclause.CTEMaterialize}}}).Table("cte").Scan(&users)
+//
+//	// WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`
+//	db.Clauses(exclause.With{CTEs: []exclause.CTE{{Name: "cte", Subquery: exclause.Subquery{DB: db.Table("users")}, Materialized: exclause.CTENotMaterialize}}}).Table("cte").Scan(&users)
+//
+//	// WITH `cte1` AS MATERIALIZED (...), `cte2` AS NOT MATERIALIZED (...) SELECT * FROM `cte1`
+//	db.Clauses(exclause.With{CTEs: []exclause.CTE{
+//		exclause.NewMaterializedCTE("cte1", exclause.Subquery{DB: db.Table("users")}),
+//		exclause.NewNotMaterializedCTE("cte2", exclause.Subquery{DB: db.Table("products")}),
+//	}}).Table("cte1").Scan(&users)
 type With struct {
 	Recursive bool
 	CTEs      []CTE
@@ -26,9 +50,52 @@ type With struct {
 
 // CTE common table expressions
 type CTE struct {
-	Name     string
-	Columns  []string
-	Subquery clause.Expression
+	Name         string
+	Columns      []string
+	Subquery     clause.Expression
+	Materialized CTEMaterializeOption
+}
+
+// convertToClauseExpression converts various input types to clause.Expression
+func convertToClauseExpression(subquery interface{}, args ...interface{}) clause.Expression {
+	switch v := subquery.(type) {
+	case clause.Expression:
+		return v
+	case *gorm.DB:
+		return Subquery{DB: v}
+	case string:
+		return clause.Expr{SQL: v, Vars: args}
+	default:
+		// Return empty Expr if type is not recognized
+		return clause.Expr{}
+	}
+}
+
+// NewCTE creates a new CTE with unspecified materialization (database default)
+func NewCTE(name string, subquery interface{}, args ...interface{}) CTE {
+	return CTE{
+		Name:         name,
+		Subquery:     convertToClauseExpression(subquery, args...),
+		Materialized: CTEMaterializeUnspecified,
+	}
+}
+
+// NewMaterializedCTE creates a new CTE that will be materialized
+func NewMaterializedCTE(name string, subquery interface{}, args ...interface{}) CTE {
+	return CTE{
+		Name:         name,
+		Subquery:     convertToClauseExpression(subquery, args...),
+		Materialized: CTEMaterialize,
+	}
+}
+
+// NewNotMaterializedCTE creates a new CTE that will not be materialized
+func NewNotMaterializedCTE(name string, subquery interface{}, args ...interface{}) CTE {
+	return CTE{
+		Name:         name,
+		Subquery:     convertToClauseExpression(subquery, args...),
+		Materialized: CTENotMaterialize,
+	}
 }
 
 // Name with clause name
@@ -64,6 +131,13 @@ func (cte CTE) Build(builder clause.Builder) {
 	}
 
 	builder.WriteString(" AS ")
+
+	switch cte.Materialized {
+	case CTEMaterialize:
+		builder.WriteString("MATERIALIZED ")
+	case CTENotMaterialize:
+		builder.WriteString("NOT MATERIALIZED ")
+	}
 
 	builder.WriteByte('(')
 	cte.Subquery.Build(builder)
