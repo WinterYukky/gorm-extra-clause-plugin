@@ -203,6 +203,49 @@ func TestWith_Query(t *testing.T) {
 			want:     "WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) SELECT * FROM `cte`",
 			wantArgs: []driver.Value{"WinterYukky"},
 		},
+		{
+			name: "When Unquoted is true, then CTE name should not be quoted",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}, Unquoted: true}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH cte AS (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When Unquoted is true with columns, then CTE name and columns should not be quoted",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{{Name: "cte", Columns: []string{"id", "name"}, Subquery: Subquery{DB: db.Table("users")}, Unquoted: true}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH cte (id,name) AS (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When Unquoted is true with MATERIALIZED",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}, Materialized: CTEMaterialize, Unquoted: true}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH cte AS MATERIALIZED (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When Unquoted is true with RECURSIVE",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{Recursive: true, CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users")}, Unquoted: true}}}).Table("cte").Scan(nil)
+			},
+			want:     "WITH RECURSIVE cte AS (SELECT * FROM `users`) SELECT * FROM `cte`",
+			wantArgs: []driver.Value{},
+		},
+		{
+			name: "When mixed quoted and unquoted CTEs",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{
+					{Name: "cte1", Subquery: Subquery{DB: db.Table("users")}, Unquoted: true},
+					{Name: "cte2", Subquery: Subquery{DB: db.Table("products")}, Unquoted: false},
+				}}).Table("cte1").Scan(nil)
+			},
+			want:     "WITH cte1 AS (SELECT * FROM `users`),`cte2` AS (SELECT * FROM `products`) SELECT * FROM `cte1`",
+			wantArgs: []driver.Value{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -299,6 +342,14 @@ func TestWith_Update(t *testing.T) {
 				return db.Clauses(With{CTEs: []CTE{NewNotMaterializedCTE("cte", db.Table("users").Where("`name` = ?", "WinterYukky"))}}).Table("users").Where("`users`.`id` IN (SELECT `id` FROM `cte`)").Update("name", "new_name")
 			},
 			want:     "WITH `cte` AS NOT MATERIALIZED (SELECT * FROM `users` WHERE `name` = ?) UPDATE `users` SET `name`=? WHERE `users`.`id` IN (SELECT `id` FROM `cte`)",
+			wantArgs: []driver.Value{"WinterYukky", "new_name"},
+		},
+		{
+			name: "When Unquoted is true in update",
+			operation: func(db *gorm.DB) *gorm.DB {
+				return db.Clauses(With{CTEs: []CTE{{Name: "cte", Subquery: Subquery{DB: db.Table("users").Where("`name` = ?", "WinterYukky")}, Unquoted: true}}}).Table("users").Where("`users`.`id` IN (SELECT `id` FROM `cte`)").Update("name", "new_name")
+			},
+			want:     "WITH cte AS (SELECT * FROM `users` WHERE `name` = ?) UPDATE `users` SET `name`=? WHERE `users`.`id` IN (SELECT `id` FROM `cte`)",
 			wantArgs: []driver.Value{"WinterYukky", "new_name"},
 		},
 	}

@@ -54,6 +54,7 @@ type CTE struct {
 	Columns      []string
 	Subquery     clause.Expression
 	Materialized CTEMaterializeOption
+	Unquoted     bool
 }
 
 // convertToClauseExpression converts various input types to clause.Expression
@@ -118,14 +119,22 @@ func (with With) Build(builder clause.Builder) {
 
 // Build build CTE
 func (cte CTE) Build(builder clause.Builder) {
-	builder.WriteQuoted(cte.Name)
+	if cte.Unquoted {
+		builder.WriteString(cte.Name)
+	} else {
+		builder.WriteQuoted(cte.Name)
+	}
 	if len(cte.Columns) > 0 {
 		builder.WriteString(" (")
 		for index, column := range cte.Columns {
 			if index > 0 {
 				builder.WriteByte(',')
 			}
-			builder.WriteQuoted(column)
+			if cte.Unquoted {
+				builder.WriteString(column)
+			} else {
+				builder.WriteQuoted(column)
+			}
 		}
 		builder.WriteByte(')')
 	}
